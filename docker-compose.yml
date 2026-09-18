@@ -1,0 +1,27 @@
+services:
+  upload-coordinator:
+    build: .
+    image: chunk-upload-coordinator:latest
+    container_name: chunk-upload-coordinator
+    ports:
+      - "8080:8080"
+    environment:
+      # SQLite 文件位置；务必挂载卷以持久化会话与租约
+      DB_PATH: /data/sessions.db
+      # 租约有效期（秒），过期后该分片可被其他客户端重新领取
+      LEASE_TTL_SECONDS: "300"
+      # 单会话最大分片数
+      MAX_TOTAL_CHUNKS: "100000"
+      PORT: "8080"
+    volumes:
+      - upload-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz').status==200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+volumes:
+  upload-data:
